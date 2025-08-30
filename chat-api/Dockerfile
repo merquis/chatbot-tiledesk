@@ -42,7 +42,7 @@ FROM node:16-alpine AS runtime
 
 WORKDIR /app
 
-# Install runtime dependencies + Redis + RabbitMQ
+# Install runtime dependencies + Redis (RabbitMQ will be handled differently)
 RUN apk add --no-cache \
     vips \
     vips-dev \
@@ -53,9 +53,7 @@ RUN apk add --no-cache \
     giflib \
     tini \
     curl \
-    redis \
-    rabbitmq-server \
-    supervisor
+    redis
 
 # Create non-root user with proper home directory
 RUN addgroup -S tiledesk && adduser -S tiledesk -G tiledesk -h /home/tiledesk
