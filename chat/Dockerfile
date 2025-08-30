@@ -1,5 +1,5 @@
 # Tiledesk Dashboard (chat) – build Angular app and serve via Nginx
-FROM node:22-alpine AS build
+FROM node:16-alpine AS build
 
 ARG TILEDESK_DASHBOARD_REF=master
 

@@ -1,11 +1,11 @@
 # Tiledesk Server (chat-api) – build from source
-# Runtime: Node.js 16 (LTS)
+# Use Node.js 16.x (LTS version compatible with Tiledesk)
 FROM node:16-alpine AS build
 
 ARG TILEDESK_SERVER_REF=master
 
 WORKDIR /app
-RUN apk add --no-cache git python3 make g++ libvips-dev
+RUN apk add --no-cache git python3 make g++
 
 # Clone official repo (pin with TILEDESK_SERVER_REF for stability)
 RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git .
