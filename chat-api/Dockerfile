@@ -87,5 +87,13 @@ USER tiledesk
 # Use tini for proper signal handling and zombie reaping
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the application
-CMD ["node", "app.js"]
+# Create startup script to set Redis config
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'export REDIS_URL=${REDIS_URL:-redis://default:Esperanza#85@top-estrellas_redis:6379}' >> /app/start.sh && \
+    echo 'export REDIS_HOST=${REDIS_HOST:-top-estrellas_redis}' >> /app/start.sh && \
+    echo 'export REDIS_PORT=${REDIS_PORT:-6379}' >> /app/start.sh && \
+    echo 'node app.js' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Start the application through script
+CMD ["/app/start.sh"]
