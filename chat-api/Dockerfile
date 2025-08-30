@@ -1,39 +1,68 @@
 # Tiledesk Server (chat-api) – build from source
-# Use Node.js 16.x (LTS version compatible with Tiledesk)
-FROM node:16-alpine AS build
+# Use Node.js 18.x (recommended for latest Tiledesk)
+FROM node:18-alpine AS build
 
-ARG TILEDESK_SERVER_REF=master
+# Use a specific stable version instead of master
+ARG TILEDESK_SERVER_REF=v2.9.0
 
 WORKDIR /app
 
-# Install build dependencies
-# vips-dev es el nombre correcto en Alpine para libvips development files
-RUN apk add --no-cache git python3 make g++ \
-    && apk add --no-cache vips-dev
+# Install build dependencies including vips for image processing
+RUN apk add --no-cache \
+    git \
+    python3 \
+    make \
+    g++ \
+    vips-dev \
+    build-base \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev
 
-# Clone official repo (pin with TILEDESK_SERVER_REF for stability)
-RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git .
+# Clone official repo
+RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git . \
+    || git clone --depth=1 https://github.com/Tiledesk/tiledesk-server.git .
 
-# Install production deps
-RUN npm ci
+# Install all dependencies (including dev for building native modules)
+RUN npm ci || npm install
 
 # ---- Runtime image ----
-FROM node:16-alpine AS runtime
+FROM node:18-alpine AS runtime
+
 WORKDIR /app
 
-# Install runtime dependencies for vips if needed
-RUN apk add --no-cache vips
+# Install runtime dependencies
+RUN apk add --no-cache \
+    vips \
+    cairo \
+    jpeg \
+    pango \
+    giflib \
+    && apk add --no-cache --virtual .gyp python3 make g++ \
+    && apk del .gyp
 
 # Create non-root user
 RUN addgroup -S nodegroup && adduser -S nodeuser -G nodegroup
 
-COPY --from=build /app /app
+# Copy application from build stage
+COPY --from=build --chown=nodeuser:nodegroup /app /app
+
+# Copy node_modules separately to ensure permissions
+COPY --from=build --chown=nodeuser:nodegroup /app/node_modules /app/node_modules
 
 # Internal port used by Tiledesk Server
-EXPOSE 3000
+EXPOSE 3010
 
-# Healthcheck (optional)
-HEALTHCHECK --interval=30s --timeout=5s --retries=5 CMD wget -qO- http://localhost:3000/ || exit 1
+# Environment variables (these will be overridden by Easypanel)
+ENV NODE_ENV=production \
+    PORT=3010
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD node -e "require('http').get('http://localhost:3010/healthcheck', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})" || exit 1
 
 USER nodeuser
-CMD ["npm", "start"]
+
+# Use node directly instead of npm start for better signal handling
+CMD ["node", "app.js"]
