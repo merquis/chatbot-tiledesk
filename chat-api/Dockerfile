@@ -1,6 +1,6 @@
 # Tiledesk Server (chat-api) – build from source
-# Use Node.js 18.x LTS for stability
-FROM node:18-alpine AS build
+# Use Node.js 16 as required by Tiledesk to avoid Sharp compatibility issues
+FROM node:16-alpine AS build
 
 # Use a specific stable version instead of master
 ARG TILEDESK_SERVER_REF=v2.9.0
@@ -21,21 +21,24 @@ RUN apk add --no-cache \
     giflib-dev \
     pkgconfig
 
-# Clone official repo with better error handling
+# Clone official repo
 RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git . || \
     git clone --depth=1 https://github.com/Tiledesk/tiledesk-server.git .
 
-# Install dependencies directly from the cloned repo
-RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
+# Install dependencies without Sharp to avoid compilation issues
+RUN npm install --omit=dev --no-audit --no-fund --ignore-scripts --legacy-peer-deps
 
-# Force rebuild sharp with correct version for Node 18
-RUN npm uninstall sharp && npm install sharp@0.32.6 --platform=linux --arch=x64
+# Install Sharp separately with pre-built binaries for alpine
+RUN npm install sharp@0.30.7 --platform=linux --arch=x64
 
-# Clean npm cache to reduce image size
+# Install other native modules that might need building
+RUN npm rebuild bcrypt node-sass 2>/dev/null || true
+
+# Clean npm cache
 RUN npm cache clean --force
 
 # ---- Runtime image ----
-FROM node:18-alpine AS runtime
+FROM node:16-alpine AS runtime
 
 WORKDIR /app
 
@@ -67,10 +70,11 @@ EXPOSE 3010
 # Environment variables (these will be overridden by your hosting)
 ENV NODE_ENV=production \
     PORT=3010 \
-    LOG_LEVEL=info
+    LOG_LEVEL=info \
+    NODE_OPTIONS="--max-old-space-size=2048"
 
 # Enhanced healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3010/healthcheck', {timeout: 5000}, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))" || exit 1
 
 # Switch to non-root user
