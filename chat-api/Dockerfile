@@ -1,11 +1,11 @@
 # Tiledesk Server (chat-api) – build from source
-# Runtime: Node.js 22 (LTS)
-FROM node:22-alpine AS build
+# Runtime: Node.js 16 (LTS)
+FROM node:16-alpine AS build
 
 ARG TILEDESK_SERVER_REF=master
 
 WORKDIR /app
-RUN apk add --no-cache git python3 make g++
+RUN apk add --no-cache git python3 make g++ libvips-dev
 
 # Clone official repo (pin with TILEDESK_SERVER_REF for stability)
 RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git .
@@ -14,7 +14,7 @@ RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiled
 RUN npm ci
 
 # ---- Runtime image ----
-FROM node:22-alpine AS runtime
+FROM node:16-alpine AS runtime
 WORKDIR /app
 
 # Create non-root user
