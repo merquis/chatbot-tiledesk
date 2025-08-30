@@ -28,8 +28,8 @@ RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiled
 # Install dependencies without Sharp to avoid compilation issues
 RUN npm install --omit=dev --no-audit --no-fund --ignore-scripts --legacy-peer-deps
 
-# Install Sharp separately with pre-built binaries for alpine
-RUN npm install sharp@0.30.7 --platform=linux --arch=x64
+# Install Sharp with correct musl binaries for alpine
+RUN npm install --platform=linuxmusl --arch=x64 sharp@0.30.7
 
 # Install other native modules that might need building
 RUN npm rebuild bcrypt node-sass 2>/dev/null || true
@@ -45,6 +45,8 @@ WORKDIR /app
 # Install only runtime dependencies (REDIS REMOVED - using external container)
 RUN apk add --no-cache \
     vips \
+    vips-dev \
+    vips-cpp \
     cairo \
     jpeg \
     pango \
