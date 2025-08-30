@@ -49,7 +49,8 @@ RUN apk add --no-cache \
     jpeg \
     pango \
     giflib \
-    tini
+    tini \
+    redis
 
 # Create non-root user with proper home directory
 RUN addgroup -S tiledesk && adduser -S tiledesk -G tiledesk -h /home/tiledesk
@@ -71,11 +72,13 @@ EXPOSE 3010
 ENV NODE_ENV=production \
     PORT=3010 \
     LOG_LEVEL=info \
-    NODE_OPTIONS="--max-old-space-size=2048"
+    NODE_OPTIONS="--max-old-space-size=2048" \
+    REDIS_HOST=redis \
+    REDIS_PORT=6379
 
-# Enhanced healthcheck
+# Enhanced healthcheck using the Docker standard approach
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3010/healthcheck', {timeout: 5000}, (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))" || exit 1
+    CMD curl --silent --fail http://localhost:3010/healthcheck || exit 1
 
 # Switch to non-root user
 USER tiledesk
