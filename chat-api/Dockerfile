@@ -5,7 +5,8 @@ FROM node:16-alpine AS build
 ARG TILEDESK_SERVER_REF=master
 
 WORKDIR /app
-RUN apk add --no-cache git python3 make g++ libvips-dev
+RUN apk add --no-cache git python3 make g++ \
+    && apk add --no-cache libvips
 
 # Clone official repo (pin with TILEDESK_SERVER_REF for stability)
 RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git .
