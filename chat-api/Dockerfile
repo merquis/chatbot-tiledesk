@@ -42,7 +42,7 @@ FROM node:16-alpine AS runtime
 
 WORKDIR /app
 
-# Install only runtime dependencies + Redis for local proxy
+# Install runtime dependencies + Redis + RabbitMQ
 RUN apk add --no-cache \
     vips \
     vips-dev \
@@ -53,7 +53,9 @@ RUN apk add --no-cache \
     giflib \
     tini \
     curl \
-    redis
+    redis \
+    rabbitmq-server \
+    supervisor
 
 # Create non-root user with proper home directory
 RUN addgroup -S tiledesk && adduser -S tiledesk -G tiledesk -h /home/tiledesk
@@ -88,27 +90,32 @@ USER tiledesk
 # Use tini for proper signal handling and zombie reaping
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Create startup script that starts Redis locally and configures connection to external
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "Starting local Redis as fallback..."' >> /app/start.sh && \
-    echo '# Start Redis locally without persistence (just as backup)' >> /app/start.sh && \
-    echo 'redis-server --daemonize yes --port 6379 --bind 127.0.0.1 --save ""' >> /app/start.sh && \
-    echo 'sleep 2' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Try to connect to external Redis and copy data if possible' >> /app/start.sh && \
-    echo 'echo "External Redis: ${REDIS_HOST:-top-estrellas_redis}:${REDIS_PORT:-6379}"' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Export Redis environment variables' >> /app/start.sh && \
-    echo 'export REDIS_URL=${REDIS_URL}' >> /app/start.sh && \
-    echo 'export REDIS_HOST=${REDIS_HOST}' >> /app/start.sh && \
-    echo 'export REDIS_PORT=${REDIS_PORT}' >> /app/start.sh && \
-    echo 'export REDIS_PASSWORD=${REDIS_PASSWORD}' >> /app/start.sh && \
-    echo 'export REDIS_USERNAME=${REDIS_USERNAME}' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Start Tiledesk application' >> /app/start.sh && \
-    echo 'echo "Starting Tiledesk..."' >> /app/start.sh && \
-    echo 'node app.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Create supervisor config to manage multiple services
+RUN mkdir -p /etc/supervisor.d && \
+    echo '[supervisord]' > /etc/supervisor.d/supervisord.conf && \
+    echo 'nodaemon=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'user=root' >> /etc/supervisor.d/supervisord.conf && \
+    echo '' >> /etc/supervisor.d/supervisord.conf && \
+    echo '[program:redis]' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'command=redis-server --port 6379 --bind 127.0.0.1 --save ""' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'user=tiledesk' >> /etc/supervisor.d/supervisord.conf && \
+    echo '' >> /etc/supervisor.d/supervisord.conf && \
+    echo '[program:rabbitmq]' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'command=rabbitmq-server' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'user=tiledesk' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'environment=RABBITMQ_NODENAME=rabbit@localhost' >> /etc/supervisor.d/supervisord.conf && \
+    echo '' >> /etc/supervisor.d/supervisord.conf && \
+    echo '[program:tiledesk]' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'command=node app.js' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'directory=/app' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'user=tiledesk' >> /etc/supervisor.d/supervisord.conf && \
+    echo 'environment=REDIS_URL="%(ENV_REDIS_URL)s",REDIS_HOST="%(ENV_REDIS_HOST)s",REDIS_PORT="%(ENV_REDIS_PORT)s"' >> /etc/supervisor.d/supervisord.conf
 
 # Start the application through script
 CMD ["/app/start.sh"]
