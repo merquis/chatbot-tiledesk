@@ -25,14 +25,14 @@ RUN apk add --no-cache \
 RUN git clone --depth=1 --branch ${TILEDESK_SERVER_REF} https://github.com/Tiledesk/tiledesk-server.git . || \
     git clone --depth=1 https://github.com/Tiledesk/tiledesk-server.git .
 
-# Copy package files first for better caching
-COPY package*.json ./
+# Install dependencies directly from the cloned repo
+RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
 
-# Install dependencies with npm ci for production builds
-RUN npm ci --only=production --no-audit --no-fund
+# Force rebuild sharp with correct version for Node 18
+RUN npm uninstall sharp && npm install sharp@0.32.6 --platform=linux --arch=x64
 
-# Build any native modules if needed
-RUN npm rebuild --verbose
+# Clean npm cache to reduce image size
+RUN npm cache clean --force
 
 # ---- Runtime image ----
 FROM node:18-alpine AS runtime
