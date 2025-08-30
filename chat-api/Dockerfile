@@ -42,7 +42,7 @@ FROM node:16-alpine AS runtime
 
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install only runtime dependencies (REDIS REMOVED - using external container)
 RUN apk add --no-cache \
     vips \
     cairo \
@@ -50,7 +50,7 @@ RUN apk add --no-cache \
     pango \
     giflib \
     tini \
-    redis
+    curl
 
 # Create non-root user with proper home directory
 RUN addgroup -S tiledesk && adduser -S tiledesk -G tiledesk -h /home/tiledesk
@@ -68,13 +68,12 @@ RUN mkdir -p /app/logs && chown tiledesk:tiledesk /app/logs
 # Internal port used by Tiledesk Server
 EXPOSE 3010
 
-# Environment variables (these will be overridden by your hosting)
+# Environment variables (will be overridden by EasyPanel)
+# Removed Redis defaults since using external Redis container
 ENV NODE_ENV=production \
     PORT=3010 \
     LOG_LEVEL=info \
-    NODE_OPTIONS="--max-old-space-size=2048" \
-    REDIS_HOST=redis \
-    REDIS_PORT=6379
+    NODE_OPTIONS="--max-old-space-size=2048"
 
 # Enhanced healthcheck using the Docker standard approach
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
