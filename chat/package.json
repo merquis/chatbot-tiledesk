@@ -1,0 +1,21 @@
+{
+  "name": "tiledesk-dashboard",
+  "version": "1.0.0",
+  "description": "Tiledesk dashboard for chat management",
+  "main": "index.js",
+  "scripts": {
+    "start": "ng serve"
+  },
+  "dependencies": {
+    "angular": "^11.0.0",
+    "nginx": "^1.19.0"
+  },
+  "devDependencies": {
+    "webpack": "^4.44.2"
+  },
+  "engines": {
+    "node": "16.x"
+  },
+  "author": "Tiledesk",
+  "license": "MIT"
+}
