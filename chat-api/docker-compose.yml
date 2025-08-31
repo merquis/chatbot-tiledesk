@@ -1,6 +1,7 @@
-# Tiledesk stack (EasyPanel-friendly)
-# No "version", no "container_name", no host "ports" aquí.
-# Publica el proxy desde EasyPanel (80 interno -> 3010 externo o dominio con SSL).
+# Tiledesk stack para EasyPanel
+# - Sin "version", sin "container_name", sin "ports" (publica el proxy desde EasyPanel)
+# - Usa Mongo EXTERNO via MONGODB_URI / CHAT21_MONGODB_URI
+# - Define TODAS las variables en EasyPanel (Settings -> Variables)
 
 volumes:
   tiledesk-datadb:
@@ -93,7 +94,7 @@ services:
       - CHAT21_ADMIN_TOKEN=${CHAT21_ADMIN_TOKEN}
       - AMQP_MANAGER_URL=${AMQP_MANAGER_URL}
       - MONGODB_URI=${MONGODB_URI}
-      - DATABASE_URI=${MONGODB_URI}
+      - DATABASE_URI=${MONGODB_URI}          # compat con imágenes que aún leen DATABASE_URI
       - EMAIL_ENABLED=${EMAIL_ENABLED}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_USERNAME=${EMAIL_USERNAME}
