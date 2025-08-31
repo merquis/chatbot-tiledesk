@@ -1,6 +1,3 @@
-volumes:
-  tiledesk-datadb:
-
 services:
   proxy:
     image: tiledesk/tiledesk-docker-proxy:v1.1.2
@@ -11,9 +8,10 @@ services:
       - chat21httpserver
       - rabbitmq
       - cds
+      - ionic
     command: ["nginx-debug", "-g", "daemon off;"]
-    ports:
-      - "8081:80"   # host 8081 -> contenedor 80 (oficial)
+    expose:
+      - "80"
     restart: unless-stopped
 
   server:
@@ -37,6 +35,14 @@ services:
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
       - APPS_ACCESS_TOKEN_SECRET=${APPS_ACCESS_TOKEN_SECRET}
       - CORS_ORIGIN=${CORS_ORIGIN}
+      - CHAT21_ENABLED=true
+      - CHAT21_ENGINE=mqtt
+      - CHAT21_URL=http://chat21httpserver:8004
+      - CHAT21_JWT_SECRET=tokenKey
+      - CHAT21_APPID=tilechat
+      - RESTHOOK_ENABLED=true
+      - ALLOW_REOPEN_CHAT=true
+      - RABBITMQ_URI=${RABBITMQ_URI}
     depends_on:
       - redis
       - rabbitmq
@@ -66,61 +72,4 @@ services:
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
       - WS_URL_RELATIVE=/ws/
       - CDS_STORAGE_PREFIX=cds_sv5
-      - AI_MODELS=${CDS_AI_MODELS}
-    expose:
-      - "80"
-    restart: unless-stopped
-
-  webwidget:
-    image: chat21/chat21-web-widget:5.0.93
-    environment:
-      - SERVER_BASE_URL=${EXTERNAL_BASE_URL}/api/
-      - DASHBOARD_URL=/dashboard/
-      - MQTT_ENDPOINT=${EXTERNAL_BASE_URL}/mqws/ws
-      - MQTT_APIENDPOINT=${EXTERNAL_BASE_URL}/chatapi/api
-    expose:
-      - "80"
-    restart: unless-stopped
-
-  chat21httpserver:
-    image: chat21/chat21-http-server:0.2.37
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - RABBITMQ_URI=${RABBITMQ_URI}
-      - PUSH_WH_WEBHOOK_TOKEN=${PUSH_WH_WEBHOOK_TOKEN}
-    depends_on:
-      - rabbitmq
-    expose:
-      - "8004"
-    restart: unless-stopped
-
-  chat21server:
-    image: chat21/chat21-server:0.2.53
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - RABBITMQ_URI=${RABBITMQ_URI}
-      - APP_ID=tilechat
-      - WEBHOOK_ENDPOINTS=http://server:3000/chat21/requests
-    depends_on:
-      - rabbitmq
-      - server
-    expose:
-      - "3030"
-    restart: unless-stopped
-
-  rabbitmq:
-    image: chat21/chat21-rabbitmq
-    environment:
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    expose:
-      - "5672"
-      - "15672"
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.0.5
-    expose:
-      - "6379"
-    restart: unless-stopped
+      - AI_MODELS=${CDS_AI_MOD_
