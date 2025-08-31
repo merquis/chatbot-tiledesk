@@ -13,7 +13,7 @@ services:
       - cds
     command: ["nginx-debug", "-g", "daemon off;"]
     ports:
-      - "3010:80"   # ← host 3010 -> container 80
+      - "3020:80"   # ← host 3010 -> container 80
     restart: unless-stopped
 
   dashboard:
