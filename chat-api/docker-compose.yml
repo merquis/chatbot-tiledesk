@@ -1,7 +1,7 @@
 # Tiledesk stack para EasyPanel
-# - Sin "version", sin "container_name", sin "ports" (publica el proxy desde EasyPanel)
-# - Usa Mongo EXTERNO via MONGODB_URI / CHAT21_MONGODB_URI
-# - Define TODAS las variables en EasyPanel (Settings -> Variables)
+# - Sin "version", sin "container_name", sin "ports"
+# - Usa un solo MONGODB_URI para todo (server + chat21)
+# - Publica SOLO el proxy (interno 80) desde EasyPanel → dominio/puerto externo
 
 volumes:
   tiledesk-datadb:
@@ -94,7 +94,7 @@ services:
       - CHAT21_ADMIN_TOKEN=${CHAT21_ADMIN_TOKEN}
       - AMQP_MANAGER_URL=${AMQP_MANAGER_URL}
       - MONGODB_URI=${MONGODB_URI}
-      - DATABASE_URI=${MONGODB_URI}          # compat con imágenes que aún leen DATABASE_URI
+      - DATABASE_URI=${MONGODB_URI}          # compat
       - EMAIL_ENABLED=${EMAIL_ENABLED}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_USERNAME=${EMAIL_USERNAME}
@@ -139,7 +139,7 @@ services:
     image: chat21/chat21-http-server:0.2.37
     environment:
       - LOG_LEVEL=info
-      - MONGODB_URI=${CHAT21_MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI}   # usa el mismo que server
       - JWT_KEY=tokenKey
       - RABBITMQ_URI=${RABBITMQ_URI}
       - PUSH_ENABLED=true
@@ -157,7 +157,7 @@ services:
     image: chat21/chat21-server:0.2.53
     environment:
       - LOG_LEVEL=info
-      - MONGODB_URI=${CHAT21_MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI}   # usa el mismo que server
       - APP_ID=tilechat
       - WEBHOOK_ENDPOINTS=http://server:3000/chat21/requests,http://chat21httpserver:8004/api/tilechat/push/webhook/endpoint/${PUSH_WH_WEBHOOK_TOKEN}
       - WEBHOOK_ENABLED=true
