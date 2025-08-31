@@ -1,5 +1,5 @@
 services:
-  tiledesk-compose:  # proxy (si EasyPanel espera este nombre)
+  tiledesk-compose:  # proxy usado por EasyPanel como servicio principal
     image: tiledesk/tiledesk-docker-proxy:v1.1.2
     depends_on:
       - server
@@ -10,8 +10,8 @@ services:
       - cds
       - ionic
     command: ["nginx-debug", "-g", "daemon off;"]
-    ports:
-      - "3020:80"  # público: host 3020 -> contenedor 80
+    expose:
+      - "80"    # ← SIN ports; EasyPanel hará 3020 -> 80
     restart: unless-stopped
 
   server:
@@ -19,13 +19,11 @@ services:
     environment:
       - MONGODB_URI=${MONGODB_URI}
       - DATABASE_URI=${MONGODB_URI}
-
       - GLOBAL_SECRET=${GLOBAL_SECRET}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SUPER_PASSWORD=${SUPER_PASSWORD}
       - APPS_ACCESS_TOKEN_SECRET=${APPS_ACCESS_TOKEN_SECRET}
-
       - EMAIL_ENABLED=${EMAIL_ENABLED}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
@@ -34,31 +32,25 @@ services:
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}
       - EMAIL_FROM_ADDRESS=${EMAIL_FROM_ADDRESS}
       - EMAIL_BASEURL=${EXTERNAL_BASE_URL}/dashboard
-
       - WEBHOOK_ORIGIN=${EXTERNAL_BASE_URL}/api/
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
       - BASE_FILE_URL=${EXTERNAL_BASE_URL}/api/
-
       - RABBITMQ_URI=${RABBITMQ_URI}
       - CHAT21_JWT_SECRET=${CHAT21_JWT_SECRET}
-
       - CHAT21_ENABLED=true
       - CHAT21_ENGINE=mqtt
       - CHAT21_URL=http://chat21httpserver:8004
       - CHAT21_APPID=tilechat
       - CHAT21_ADMIN_TOKEN=${CHAT21_ADMIN_TOKEN}
-
       - CACHE_ENABLED=true
       - CACHE_ENGINE=redis
       - CACHE_REDIS_HOST=redis
       - CACHE_REDIS_PORT=6379
-
       - CORS_ORIGIN=${CORS_ORIGIN}
       - LICENSE_KEY=${LICENSE_KEY}
       - GPTKEY=${GPTKEY}
       - OPENAI_ENDPOINT=${OPENAI_ENDPOINT}
       - KB_ENDPOINT=${KB_ENDPOINT}
-
       - RESTHOOK_ENABLED=true
       - ALLOW_REOPEN_CHAT=true
       - BOOT_LOADING=true
@@ -67,7 +59,7 @@ services:
       - redis
       - rabbitmq
     expose:
-      - "3000"   # solo red interna
+      - "3000"
     restart: unless-stopped
 
   dashboard:
@@ -150,7 +142,7 @@ services:
     depends_on:
       - rabbitmq
     expose:
-      - "8004"  # solo red interna
+      - "8004"
     restart: unless-stopped
 
   chat21server:
@@ -168,7 +160,7 @@ services:
       - rabbitmq
       - server
     expose:
-      - "3030"  # solo red interna
+      - "3030"
     restart: unless-stopped
 
   rabbitmq:
@@ -176,7 +168,7 @@ services:
     environment:
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
       JWT_RABBIT_SECRET: ${CHAT21_JWT_SECRET}
-      # NO definir RABBITMQ_DEFAULT_USER / RABBITMQ_DEFAULT_PASS (evita auth PLAIN)
+      # NO definir RABBITMQ_DEFAULT_USER / PASS
     expose:
       - "5672"
       - "15672"
