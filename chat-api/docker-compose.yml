@@ -1,13 +1,13 @@
-version: "3.7"
+# Tiledesk stack (EasyPanel-friendly)
+# No "version", no "container_name", no host "ports" aquí.
+# Publica el proxy desde EasyPanel (80 interno -> 3010 externo o dominio con SSL).
 
 volumes:
   tiledesk-datadb:
 
 services:
-  # === PROXY de Tiledesk (único puerto público) ===
   proxy:
     image: tiledesk/tiledesk-docker-proxy:v1.1.2
-    container_name: tiledesk-docker-proxy
     depends_on:
       - server
       - dashboard
@@ -15,19 +15,15 @@ services:
       - chat21httpserver
       - rabbitmq
       - cds
-    ports:
-      - "3010:80"          # ← PUERTO PÚBLICO ÚNICO (cámbialo si quieres)
-    command: [ "nginx-debug", "-g", "daemon off;" ]
+    command: ["nginx-debug", "-g", "daemon off;"]
+    expose:
+      - "80"
     restart: unless-stopped
 
-  # === Dashboard (panel) ===
   dashboard:
     image: tiledesk/tiledesk-dashboard:2.7.93
-    container_name: dashboard
     environment:
       - FEATURES_TOKEN=${FEATURES_TOKEN}
-      - BOT_CREDENTIAL_URL=/api/modules/dialogflow/botcredendials/
-      - RASA_BOT_CREDENTIAL_URL=/api/modules/rasa/botcredendials/
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
       - SERVER_BASE_URL=/api/
       - CHAT_BASE_URL=/chat/
@@ -45,10 +41,8 @@ services:
       - "80"
     restart: unless-stopped
 
-  # === Design Studio (CDS) ===
   cds:
     image: tiledesk/design-studio:1.30.4
-    container_name: cds
     environment:
       - FEATURES_TOKEN=${FEATURES_TOKEN}
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
@@ -65,10 +59,8 @@ services:
       - "80"
     restart: unless-stopped
 
-  # === Web Widget ===
   webwidget:
     image: chat21/chat21-web-widget:5.0.93
-    container_name: chat21-web-widget
     environment:
       - CHAT21_ENGINE=mqtt
       - MQTT_APPID=tilechat
@@ -87,59 +79,8 @@ services:
       - "80"
     restart: unless-stopped
 
-  # === App móvil demo (opcional). Puedes eliminar este servicio. ===
-  ionic:
-    image: chat21/chat21-ionic:3.4.13
-    container_name: chat21-ionic
-    environment:
-      - DASHBOARD_URL=/dashboard/
-      - API_BASEIMAGE_URL=/api/
-      - SERVER_BASE_URL=/api/
-      - FEATURES_TOKEN=${FEATURES_TOKEN}
-      - WIDGET_LOCATION=/widget/
-      - PUSH_ENGINE=none
-      - LOG_LEVEL=info
-      - FILE_UPLOAD_ACCEPT=*/*
-      - CHAT21_ENGINE=mqtt
-      - MQTT_APPID=tilechat
-      - MQTT_ENDPOINT=${EXTERNAL_MQTT_BASE_URL}/mqws/ws
-      - MQTT_APIENDPOINT=/chatapi/api
-      - SUPPORT_MODE=true
-      - WRITE_TO_BUTTON=true
-      - ARCHIVED_BUTTON=true
-      - AUTH_PERSISTENCE=LOCAL
-      - EMAIL_SECTION=true
-      - CHAT_STORAGE_PREFIX=chat_sv5
-      - WS_URL_RELATIVE=/ws/
-    expose:
-      - "80"
-    restart: unless-stopped
-
-  # === Chatbot (Tilebot) ===
-  chatbot:
-    image: tiledesk/tiledesk-chatbot:2.0.7
-    container_name: chatbot
-    environment:
-      - API_ENDPOINT=http://server:3000
-      - TILEBOT_ENDPOINT=http://chatbot:3000
-      - API_URL=${EXTERNAL_BASE_URL}/api
-      - MONGODB_URI=mongodb://mongo/tiledesk
-      - CACHE_ENABLED=true
-      - CACHE_REDIS_HOST=redis
-      - CACHE_REDIS_PORT=6379
-      - TILEBOT_LOG=info
-      - AI_ENDPOINT=http://ai:8000/api
-    depends_on:
-      - mongo
-    expose:
-      - "3000"
-    restart: unless-stopped
-
-  # === API (tiledesk-server) ===
   server:
     image: tiledesk/tiledesk-server:2.10.75
-    container_name: server
-    restart: always
     environment:
       - LOG_LEVEL=info
       - CHAT21_ENABLED=true
@@ -152,7 +93,7 @@ services:
       - CHAT21_ADMIN_TOKEN=${CHAT21_ADMIN_TOKEN}
       - AMQP_MANAGER_URL=${AMQP_MANAGER_URL}
       - MONGODB_URI=${MONGODB_URI}
-      - DATABASE_URI=${MONGODB_URI}                # compat
+      - DATABASE_URI=${MONGODB_URI}
       - EMAIL_ENABLED=${EMAIL_ENABLED}
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_USERNAME=${EMAIL_USERNAME}
@@ -163,7 +104,6 @@ services:
       - EMAIL_BASEURL=${EXTERNAL_BASE_URL}/dashboard
       - WEBHOOK_ORIGIN=${EXTERNAL_BASE_URL}/api/
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
-      - WS_SERVER_PATH
       - LICENSE_KEY=${LICENSE_KEY}
       - CACHE_ENABLED=true
       - CACHE_ENGINE=redis
@@ -182,28 +122,23 @@ services:
       - GPTKEY=${GPTKEY}
       - OPENAI_ENDPOINT=${OPENAI_ENDPOINT}
       - KB_ENDPOINT=${KB_ENDPOINT}
-      - QUOTES_ENABLED=false
-      - TILEBOT_ENDPOINT=http://chatbot:3000
       - GLOBAL_SECRET=${GLOBAL_SECRET}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SUPER_PASSWORD=${SUPER_PASSWORD}
       - CORS_ORIGIN=${CORS_ORIGIN}
     depends_on:
-      - mongo
       - redis
       - rabbitmq
     expose:
       - "3000"
+    restart: unless-stopped
 
-  # === Chat21 HTTP (notificaciones push / webhooks) ===
   chat21httpserver:
     image: chat21/chat21-http-server:0.2.37
-    container_name: chat21httpserver
-    restart: always
     environment:
       - LOG_LEVEL=info
-      - MONGODB_URI=mongodb://mongo/chat21
+      - MONGODB_URI=${CHAT21_MONGODB_URI}
       - JWT_KEY=tokenKey
       - RABBITMQ_URI=${RABBITMQ_URI}
       - PUSH_ENABLED=true
@@ -212,54 +147,35 @@ services:
       - CHAT21HTTP_CACHE_ENABLED=false
       - CONTACTS_LOOKUP_ENDPOINT=http://server:3000/users_util
     depends_on:
-      - mongo
       - rabbitmq
     expose:
       - "8004"
+    restart: unless-stopped
 
-  # === Chat21 Realtime (websocket/mqtt bridge) ===
   chat21server:
     image: chat21/chat21-server:0.2.53
-    container_name: chat21server
-    restart: always
     environment:
       - LOG_LEVEL=info
-      - MONGODB_URI=mongodb://mongo/chat21
+      - MONGODB_URI=${CHAT21_MONGODB_URI}
       - APP_ID=tilechat
       - WEBHOOK_ENDPOINTS=http://server:3000/chat21/requests,http://chat21httpserver:8004/api/tilechat/push/webhook/endpoint/${PUSH_WH_WEBHOOK_TOKEN}
       - WEBHOOK_ENABLED=true
       - WEBHOOK_EVENTS=message-sent,message-delivered,conversation-unarchived
       - RABBITMQ_URI=${RABBITMQ_URI}
     depends_on:
-      - mongo
+      - chat21httpserver
       - rabbitmq
       - server
     expose:
       - "3030"
-
-  # === AI lite (opcional) ===
-  ai:
-    image: tiledesk/tiledeskai-lite:0.1.0
-    container_name: ai
-    environment:
-      - WORKERS=3
-      - TIMEOUT=180
-      - MAXREQUESTS=1200
-      - MAXRJITTER=5
-      - GRACEFULTIMEOUT=30
-    expose:
-      - "8000"
     restart: unless-stopped
 
-  # === Mensajería ===
   rabbitmq:
     image: chat21/chat21-rabbitmq
-    container_name: rabbitmq
     environment:
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    # Puertos de gestión cerrados al exterior
     expose:
       - "5672"
       - "15672"
@@ -267,19 +183,8 @@ services:
       - "15675"
     restart: unless-stopped
 
-  # === MongoDB ===
-  mongo:
-    image: mongo:7.0.2
-    container_name: mongo
-    command: --bind_ip_all
-    volumes:
-      - tiledesk-datadb:/data/db
-    restart: unless-stopped
-
-  # === Redis (cache) ===
   redis:
     image: redis:7.0.5
-    container_name: redis
     expose:
       - "6379"
     restart: unless-stopped
