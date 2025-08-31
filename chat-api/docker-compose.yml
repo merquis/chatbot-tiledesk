@@ -1,5 +1,5 @@
 services:
-  tiledesk-compose:  # proxy usado por EasyPanel como servicio principal
+  tiledesk-compose:  # proxy
     image: tiledesk/tiledesk-docker-proxy:v1.1.2
     depends_on:
       - server
@@ -11,7 +11,7 @@ services:
       - ionic
     command: ["nginx-debug", "-g", "daemon off;"]
     expose:
-      - "80"    # ← SIN ports; EasyPanel hará 3020 -> 80
+      - "80"   # EasyPanel mapeará 3020 -> 80
     restart: unless-stopped
 
   server:
@@ -35,17 +35,24 @@ services:
       - WEBHOOK_ORIGIN=${EXTERNAL_BASE_URL}/api/
       - WIDGET_LOCATION=${EXTERNAL_BASE_URL}/widget/
       - BASE_FILE_URL=${EXTERNAL_BASE_URL}/api/
+      # --- RabbitMQ ---
       - RABBITMQ_URI=${RABBITMQ_URI}
+      - AMQP_MANAGER_URL=${AMQP_MANAGER_URL}
+      - AMQP_URI=${AMQP_URI}
+      - AMQP_URL=${AMQP_URL}
+      - AMQP_ADDRESS=${AMQP_ADDRESS}
       - CHAT21_JWT_SECRET=${CHAT21_JWT_SECRET}
       - CHAT21_ENABLED=true
       - CHAT21_ENGINE=mqtt
       - CHAT21_URL=http://chat21httpserver:8004
       - CHAT21_APPID=tilechat
       - CHAT21_ADMIN_TOKEN=${CHAT21_ADMIN_TOKEN}
+      # --- Cache Redis ---
       - CACHE_ENABLED=true
       - CACHE_ENGINE=redis
       - CACHE_REDIS_HOST=redis
       - CACHE_REDIS_PORT=6379
+      # --- Otros ---
       - CORS_ORIGIN=${CORS_ORIGIN}
       - LICENSE_KEY=${LICENSE_KEY}
       - GPTKEY=${GPTKEY}
@@ -79,8 +86,7 @@ services:
       - COMMUNITY_TEMPLATES_URL=/api/modules/templates/public/community
       - TEMPLATES_URL=/api/modules/templates/public/templates
       - FILE_UPLOAD_ACCEPT=*/*
-    expose:
-      - "80"
+    expose: ["80"]
     restart: unless-stopped
 
   cds:
@@ -97,8 +103,7 @@ services:
       - API_BASEIMAGE_URL=/api/
       - FILE_UPLOAD_ACCEPT=*/*
       - AI_MODELS=${CDS_AI_MODELS}
-    expose:
-      - "80"
+    expose: ["80"]
     restart: unless-stopped
 
   webwidget:
@@ -117,14 +122,12 @@ services:
       - AUTH_PERSISTENCE=LOCAL
       - ENBED_JS=true
       - FILE_UPLOAD_ACCEPT=*/*
-    expose:
-      - "80"
+    expose: ["80"]
     restart: unless-stopped
 
   ionic:
     image: chat21/chat21-ionic:3.4.13
-    expose:
-      - "80"
+    expose: ["80"]
     restart: unless-stopped
 
   chat21httpserver:
@@ -132,52 +135,11 @@ services:
     environment:
       - LOG_LEVEL=info
       - MONGODB_URI=${CHAT21_MONGODB_URI}
+      - MONGODBURL=${CHAT21_MONGODB_URI}  # compat
       - JWT_KEY=${CHAT21_JWT_SECRET}
       - RABBITMQ_URI=${RABBITMQ_URI}
+      - AMQP_URI=${AMQP_URI}
       - PUSH_ENABLED=true
       - PUSH_WH_NOTIFY_URL=http://localhost:8004/api/tilechat/notify
       - PUSH_WH_WEBHOOK_TOKEN=${PUSH_WH_WEBHOOK_TOKEN}
-      - CHAT21HTTP_CACHE_ENABLED=false
-      - CONTACTS_LOOKUP_ENDPOINT=http://server:3000/users_util
-    depends_on:
-      - rabbitmq
-    expose:
-      - "8004"
-    restart: unless-stopped
-
-  chat21server:
-    image: chat21/chat21-server:0.2.53
-    environment:
-      - LOG_LEVEL=info
-      - MONGODB_URI=${CHAT21_MONGODB_URI}
-      - APP_ID=tilechat
-      - WEBHOOK_ENDPOINTS=http://server:3000/chat21/requests,http://chat21httpserver:8004/api/tilechat/push/webhook/endpoint/${PUSH_WH_WEBHOOK_TOKEN}
-      - WEBHOOK_ENABLED=true
-      - WEBHOOK_EVENTS=message-sent,message-delivered,conversation-unarchived
-      - RABBITMQ_URI=${RABBITMQ_URI}
-    depends_on:
-      - chat21httpserver
-      - rabbitmq
-      - server
-    expose:
-      - "3030"
-    restart: unless-stopped
-
-  rabbitmq:
-    image: chat21/chat21-rabbitmq
-    environment:
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
-      JWT_RABBIT_SECRET: ${CHAT21_JWT_SECRET}
-      # NO definir RABBITMQ_DEFAULT_USER / PASS
-    expose:
-      - "5672"
-      - "15672"
-      - "1883"
-      - "15675"
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.0.5
-    expose:
-      - "6379"
-    restart: unless-stopped
+      - CHAT21HTTP_CACHE_ENA
