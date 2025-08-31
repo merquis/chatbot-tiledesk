@@ -142,4 +142,41 @@ services:
       - PUSH_ENABLED=true
       - PUSH_WH_NOTIFY_URL=http://localhost:8004/api/tilechat/notify
       - PUSH_WH_WEBHOOK_TOKEN=${PUSH_WH_WEBHOOK_TOKEN}
-      - CHAT21HTTP_CACHE_ENA
+      - CHAT21HTTP_CACHE_ENABLED=false
+      - CONTACTS_LOOKUP_ENDPOINT=http://server:3000/users_util
+    expose: ["8004"]
+    depends_on: [rabbitmq]
+    restart: unless-stopped
+
+  chat21server:
+    image: chat21/chat21-server:0.2.53
+    environment:
+      - LOG_LEVEL=info
+      - MONGODB_URI=${CHAT21_MONGODB_URI}
+      - MONGODBURL=${CHAT21_MONGODB_URI}  # compat
+      - APP_ID=tilechat
+      - WEBHOOK_ENDPOINTS=http://server:3000/chat21/requests,http://chat21httpserver:8004/api/tilechat/push/webhook/endpoint/${PUSH_WH_WEBHOOK_TOKEN}
+      - WEBHOOK_ENABLED=true
+      - WEBHOOK_EVENTS=message-sent,message-delivered,conversation-unarchived
+      - RABBITMQ_URI=${RABBITMQ_URI}
+      - AMQP_URI=${AMQP_URI}
+    expose: ["3030"]
+    depends_on: [chat21httpserver, rabbitmq, server]
+    restart: unless-stopped
+
+  rabbitmq:
+    image: chat21/chat21-rabbitmq
+    environment:
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+      JWT_RABBIT_SECRET: ${CHAT21_JWT_SECRET}
+    expose:
+      - "5672"
+      - "15672"
+      - "1883"
+      - "15675"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.0.5
+    expose: ["6379"]
+    restart: unless-stopped
